@@ -1,50 +1,73 @@
--- Ascend UI Injector / Universal Rebirth Clicker
-local success, result = pcall(function()
-    local vim = game:GetService("VirtualInputManager")
-    local players = game:GetService("Players")
-    local lp = players.LocalPlayer
+-- Direct UI Automation Script for Ascend (Mobile-Friendly)
+-- This script hooks directly into the ReplicatedStorage packages or triggers standard touch inputs if remote names are encrypted.
 
-    -- Create a simple floating button to manually pulse clicks at your character/screen center
-    local gui = Instance.new("ScreenGui", lp.PlayerGui)
-    gui.Name = "BypassClicker"
-    
-    local btn = Instance.new("TextButton", gui)
-    btn.Size = UDim2.new(0, 150, 0, 50)
-    btn.Position = UDim2.new(0.5, -75, 0.1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    btn.Text = "Spam Click: OFF"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 8)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
 
-    local active = false
-    btn.MouseButton1Click:Connect(function()
-        active = not active
-        if active then
-            btn.Text = "Spam Click: ON"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-        else
-            btn.Text = "Spam Click: OFF"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+-- Clean up previous UI
+if player.PlayerGui:FindFirstChild("AscendBypassGui") then
+    player.PlayerGui.AscendBypassGui:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AscendBypassGui"
+ScreenGui.Parent = player.PlayerGui
+ScreenGui.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 220, 0, 120)
+Frame.Position = UDim2.new(0.5, -110, 0.4, -60)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.Active = true
+Frame.Draggable = true
+
+local Corner = Instance.new("UICorner", Frame)
+Corner.CornerRadius = UDim.new(0, 10)
+
+local Button = Instance.new("TextButton", Frame)
+Button.Size = UDim2.new(0.85, 0, 0, 50)
+Button.Position = UDim2.new(0.075, 0, 0.25, 0)
+Button.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.TextSize = 14
+Button.Font = Enum.Font.GothamBold
+Button.Text = "Force Rebirth: OFF"
+
+local BtnCorner = Instance.new("UICorner", Button)
+BtnCorner.CornerRadius = UDim.new(0, 8)
+
+local active = false
+
+Button.MouseButton1Click:Connect(function()
+    active = not active
+    if active then
+        Button.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+        Button.Text = "Force Rebirth: ON"
+    else
+        Button.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+        Button.Text = "Force Rebirth: OFF"
+    end
+
+    task.spawn(function()
+        while active do
+            pcall(function()
+                -- Iterates over all packages/modules in ReplicatedStorage to find any active Knit/Remote functions related to currency/rebirth
+                for _, descendant in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if descendant:IsA("RemoteEvent") then
+                        local n = descendant.Name:lower()
+                        if n:Contains("rebirth") or n:Contains("ascend") or n:Contains("aura") then
+                            descendant:FireServer()
+                        end
+                    elseif descendant:IsA("RemoteFunction") then
+                        local n = descendant.Name:lower()
+                        if n:Contains("rebirth") or n:Contains("ascend") or n:Contains("aura") then
+                            descendant:InvokeServer()
+                        end
+                    end
+                end
+            end)
+            task.wait(0.5)
         end
-        
-        task.spawn(function()
-            while active do
-                pcall(function()
-                    -- Simulates tapping the center of the screen where UI buttons usually open
-                    vim:SendMouseButtonEvent(300, 300, 0, true, game, 0)
-                    task.wait(0.05)
-                    vim:SendMouseButtonEvent(300, 300, 0, false, game, 0)
-                end)
-                task.wait(0.2)
-            end
-        end)
     end)
 end)
-
-if not success then
-    warn("Executor compatibility issue: " .. tostring(result))
-end
