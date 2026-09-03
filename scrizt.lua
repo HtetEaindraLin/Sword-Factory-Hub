@@ -1,34 +1,31 @@
 -- ============================================================
---  ASCEND OR FALL HUB — Mobile Custom GUI
---  Adapted for Mobile Devices (Touch Enabled)
+--  ASCEND OR FALL HUB — Fixed Mobile UI & Execution
 -- ============================================================
 
------------- Executor Stubs ------------
-if not isfolder   then isfolder   = function() return false end end
-if not isfile     then isfile     = function() return false end end
-if not makefolder then makefolder = function() end end
-if not writefile  then writefile  = function() end end
-if not readfile   then readfile   = function() return "{}" end end
-if not listfiles  then listfiles  = function() return {} end end
-if not delfile    then delfile    = function() end end
-
------------- Services ------------
+local CoreGui          = game:GetService("CoreGui")
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService     = game:GetService("TweenService")
-local HttpService      = game:GetService("HttpService")
-local CoreGui          = game:GetService("CoreGui")
 local player           = Players.LocalPlayer
 
------------- Theme ------------
+-- Clean up old instances if they exist
+pcall(function()
+    if CoreGui:FindFirstChild("AOF_Mobile_Hub") then
+        CoreGui.AOF_Mobile_Hub:Destroy()
+    end
+    if player.PlayerGui:FindFirstChild("AOF_Mobile_Hub") then
+        player.PlayerGui.AOF_Mobile_Hub:Destroy()
+    end
+end)
+
 local Theme = {
     bg        = Color3.fromRGB(24, 26, 33),
     sidebar   = Color3.fromRGB(18, 20, 26),
     panel     = Color3.fromRGB(30, 33, 42),
     card      = Color3.fromRGB(38, 42, 54),
     border    = Color3.fromRGB(50, 56, 72),
-    accent    = Color3.fromRGB(138, 43, 226), -- Cosmic Purple
+    accent    = Color3.fromRGB(138, 43, 226),
     accentDim = Color3.fromRGB(90, 25, 150),
     green     = Color3.fromRGB(87, 242, 135),
     red       = Color3.fromRGB(237, 66, 69),
@@ -39,7 +36,6 @@ local Theme = {
     white     = Color3.fromRGB(255, 255, 255),
 }
 
------------- State Variables ------------
 local autoClimbEnabled   = false
 local autoRebirthEnabled = false
 local speedEnabled       = false
@@ -53,34 +49,38 @@ local hudEnabled         = true
 local hudSteps           = 0
 local hudSecs            = 0
 
------------- GUI Root ------------
 local AOFGui = Instance.new("ScreenGui")
 AOFGui.Name = "AOF_Mobile_Hub"
 AOFGui.ResetOnSpawn = false
-AOFGui.DisplayOrder = 10
+AOFGui.DisplayOrder = 999999
 AOFGui.IgnoreGuiInset = true
-pcall(function() AOFGui.Parent = CoreGui end)
-if not AOFGui.Parent then AOFGui.Parent = player.PlayerGui end
 
------------- Mobile Open Toggle ------------
+local successParent = pcall(function()
+    AOFGui.Parent = CoreGui
+end)
+if not successParent then
+    AOFGui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Floating Toggle Button (Draggable & Clickable)
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "AOFToggle"
-ToggleBtn.Size = UDim2.new(0, 48, 0, 48)
-ToggleBtn.Position = UDim2.new(0, 10, 0.4, 0)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0, 15, 0.4, 0)
 ToggleBtn.BackgroundColor3 = Theme.sidebar
 ToggleBtn.TextColor3 = Theme.accent
 ToggleBtn.Text = "🌌"
-ToggleBtn.TextSize = 22
+ToggleBtn.TextSize = 24
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.ZIndex = 300
 ToggleBtn.Parent = AOFGui
+
 local tCorner = Instance.new("UICorner", ToggleBtn)
-tCorner.CornerRadius = UDim.new(0, 24)
+tCorner.CornerRadius = UDim.new(0, 25)
 local tStroke = Instance.new("UIStroke", ToggleBtn)
 tStroke.Thickness = 2
 tStroke.Color = Theme.accent
 
------------- Helpers ------------
 local function new(cls, props, parent)
     local i = Instance.new(cls)
     for k, v in pairs(props or {}) do i[k] = v end
@@ -90,10 +90,11 @@ end
 local function corner(r, p) return new("UICorner", {CornerRadius = UDim.new(0, r)}, p) end
 local function stroke(t, c2, p) return new("UIStroke", {Thickness = t, Color = c2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, p) end
 
------------- Notifications ------------
+-- Notification System
 local notifHolder = new("Frame", {Size = UDim2.new(0, 250, 1, 0), Position = UDim2.new(1, -260, 0, 0), BackgroundTransparency = 1, ZIndex = 200}, AOFGui)
 new("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Bottom, HorizontalAlignment = Enum.HorizontalAlignment.Right, Padding = UDim.new(0, 6)}, notifHolder)
 new("UIPadding", {PaddingBottom = UDim.new(0, 12), PaddingRight = UDim.new(0, 8)}, notifHolder)
+
 local _nc = 0
 local function notify(title, body, color)
     _nc = _nc + 1
@@ -109,20 +110,19 @@ local function notify(title, body, color)
     end)
 end
 
------------- Window Frame ------------
-local SIDEBAR_W = 130
-local Window = new("Frame", {Name = "Window", Size = UDim2.new(0.85, 0, 0.75, 0), Position = UDim2.new(0.075, 0, 0.125, 0), BackgroundColor3 = Theme.bg, BorderSizePixel = 0, ClipsDescendants = true}, AOFGui)
+-- Main Window
+local SIDEBAR_W = 120
+local Window = new("Frame", {Name = "Window", Size = UDim2.new(0, 420, 0, 260), Position = UDim2.new(0.5, -210, 0.5, -130), BackgroundColor3 = Theme.bg, BorderSizePixel = 0, ClipsDescendants = true, Active = true, Draggable = true}, AOFGui)
 corner(10, Window); stroke(1, Theme.border, Window)
 
-local TitleBar = new("Frame", {Size = UDim2.new(1, 0, 0, 38), BackgroundColor3 = Theme.sidebar, BorderSizePixel = 0, ZIndex = 2}, Window)
+local TitleBar = new("Frame", {Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Theme.sidebar, BorderSizePixel = 0, ZIndex = 2}, Window)
 new("TextLabel", {Text = "🌌  ASCEND OR FALL", TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 10, 0, 0), Size = UDim2.new(0, 170, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3}, TitleBar)
-new("TextLabel", {Text = "Hub", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = Theme.textMuted, BackgroundTransparency = 1, Position = UDim2.new(0, 155, 0, 0), Size = UDim2.new(0, 30, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3}, TitleBar)
 
-local function winBtn(icon, xOffset, color)
+local function winBtn(icon, xOffset)
     return new("TextButton", {Text = icon, TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(1, xOffset, 0, 0), Size = UDim2.new(0, 32, 1, 0), ZIndex = 3}, TitleBar)
 end
-local CloseBtn = winBtn("X", -32, Theme.red)
-local MinBtn = winBtn("_", -64, Theme.yellow)
+local CloseBtn = winBtn("X", -32)
+local MinBtn = winBtn("_", -64)
 
 CloseBtn.MouseButton1Click:Connect(function()
     pcall(function() AOFGui:Destroy() end)
@@ -136,30 +136,9 @@ end
 MinBtn.MouseButton1Click:Connect(toggleUI)
 ToggleBtn.MouseButton1Click:Connect(toggleUI)
 
--- Drag Functionality
-do
-    local drag, dStart, dPos = false, nil, nil
-    TitleBar.InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-            drag = true; dStart = inp.Position; dPos = Window.Position
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(inp)
-        if drag and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
-            local d = inp.Position - dStart
-            Window.Position = UDim2.new(dPos.X.Scale, dPos.X.Offset + d.X, dPos.Y.Scale, dPos.Y.Offset + d.Y)
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-            drag = false
-        end
-    end)
-end
-
-local Sidebar = new("Frame", {Size = UDim2.new(0, SIDEBAR_W, 1, -38), Position = UDim2.new(0, 0, 0, 38), BackgroundColor3 = Theme.sidebar, BorderSizePixel = 0}, Window)
+local Sidebar = new("Frame", {Size = UDim2.new(0, SIDEBAR_W, 1, -36), Position = UDim2.new(0, 0, 0, 36), BackgroundColor3 = Theme.sidebar, BorderSizePixel = 0}, Window)
 new("Frame", {Size = UDim2.new(0, 1, 1, 0), Position = UDim2.new(1, -1, 0, 0), BackgroundColor3 = Theme.border, BorderSizePixel = 0}, Sidebar)
-local ContentArea = new("Frame", {Size = UDim2.new(1, -SIDEBAR_W, 1, -38), Position = UDim2.new(0, SIDEBAR_W, 0, 38), BackgroundColor3 = Theme.panel, BorderSizePixel = 0}, Window)
+local ContentArea = new("Frame", {Size = UDim2.new(1, -SIDEBAR_W, 1, -36), Position = UDim2.new(0, SIDEBAR_W, 0, 36), BackgroundColor3 = Theme.panel, BorderSizePixel = 0}, Window)
 
 local tabs = {}
 local activeTab = nil
@@ -192,119 +171,95 @@ local function createTab(name, icon)
 end
 
 local function addSection(tab, title)
-    local f = new("Frame", {Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, LayoutOrder = #tab.content:GetChildren()}, tab.content)
-    new("TextLabel", {Text = title:upper(), TextSize = 9, Font = Enum.Font.GothamBold, TextColor3 = Theme.textMuted, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), TextXAlignment = Enum.TextXAlignment.Left}, f)
+    local f = new("Frame", {Size = UDim2.new(1, 0, 0, 16), BackgroundTransparency = 1, LayoutOrder = #tab.content:GetChildren()}, tab.content)
+    new("TextLabel", {Text = title:upper(), TextSize = 8, Font = Enum.Font.GothamBold, TextColor3 = Theme.textMuted, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), TextXAlignment = Enum.TextXAlignment.Left}, f)
     return f
 end
 local function addCard(tab, h)
-    local c2 = new("Frame", {Size = UDim2.new(1, 0, 0, h or 40), BackgroundColor3 = Theme.card, BorderSizePixel = 0, LayoutOrder = #tab.content:GetChildren()}, tab.content)
+    local c2 = new("Frame", {Size = UDim2.new(1, 0, 0, h or 36), BackgroundColor3 = Theme.card, BorderSizePixel = 0, LayoutOrder = #tab.content:GetChildren()}, tab.content)
     corner(6, c2); return c2
 end
 local function addDivider(tab)
     new("Frame", {Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Theme.border, BorderSizePixel = 0, LayoutOrder = #tab.content:GetChildren()}, tab.content)
 end
 local function addToggle(tab, title, desc, default, callback)
-    local card = addCard(tab, desc and 48 or 40)
+    local card = addCard(tab, desc and 44 = 36)
     local state = default or false
-    new("TextLabel", {Text = title, TextSize = 11, Font = Enum.Font.GothamMedium, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(1, -60, 0, desc and 22 or 40), TextXAlignment = Enum.TextXAlignment.Left}, card)
-    if desc then new("TextLabel", {Text = desc, TextSize = 9, Font = Enum.Font.Gotham, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 22), Size = UDim2.new(1, -60, 0, 18), TextXAlignment = Enum.TextXAlignment.Left}, card) end
-    local track = new("Frame", {Size = UDim2.new(0, 36, 0, 18), Position = UDim2.new(1, -46, 0.5, -9), BackgroundColor3 = state and Theme.green or Theme.border, BorderSizePixel = 0}, card); corner(9, track)
-    local knob = new("Frame", {Size = UDim2.new(0, 14, 0, 14), Position = state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7), BackgroundColor3 = Theme.white, BorderSizePixel = 0}, track); corner(7, knob)
+    new("TextLabel", {Text = title, TextSize = 10, Font = Enum.Font.GothamMedium, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(1, -55, 0, desc and 20 = 36), TextXAlignment = Enum.TextXAlignment.Left}, card)
+    if desc then new("TextLabel", {Text = desc, TextSize = 8, Font = Enum.Font.Gotham, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 20), Size = UDim2.new(1, -55, 0, 16), TextXAlignment = Enum.TextXAlignment.Left}, card) end
+    local track = new("Frame", {Size = UDim2.new(0, 32, 0, 16), Position = UDim2.new(1, -40, 0.5, -8), BackgroundColor3 = state and Theme.green or Theme.border, BorderSizePixel = 0}, card); corner(8, track)
+    local knob = new("Frame", {Size = UDim2.new(0, 12, 0, 12), Position = state and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6), BackgroundColor3 = Theme.white, BorderSizePixel = 0}, track); corner(6, knob)
     local function setState(v)
         state = v
         TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = state and Theme.green or Theme.border}):Play()
-        TweenService:Create(knob, TweenInfo.new(0.15), {Position = state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)}):Play()
+        TweenService:Create(knob, TweenInfo.new(0.15), {Position = state and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6)}):Play()
         task.spawn(function() pcall(callback, state) end)
     end
     new("TextButton", {Size = UDim2.new(1, 0, 1, 0), Text = "", BackgroundTransparency = 1}, card).MouseButton1Click:Connect(function() setState(not state) end)
-    return {set = setState, get = function() return state end}
-end
-local function addSlider(tab, title, min, max, default, suffix, callback)
-    local card = addCard(tab, 48)
-    local val = math.clamp(default or min, min, max)
-    new("TextLabel", {Text = title, TextSize = 11, Font = Enum.Font.GothamMedium, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 4), Size = UDim2.new(0.6, 0, 0, 16), TextXAlignment = Enum.TextXAlignment.Left}, card)
-    local valLbl = new("TextLabel", {Text = tostring(val)..(suffix or ""), TextSize = 10, Font = Enum.Font.GothamBold, TextColor3 = Theme.accent, BackgroundTransparency = 1, Position = UDim2.new(1, -60, 0, 4), Size = UDim2.new(0, 52, 0, 16), TextXAlignment = Enum.TextXAlignment.Right}, card)
-    local track = new("Frame", {Size = UDim2.new(1, -16, 0, 4), Position = UDim2.new(0, 8, 0, 28), BackgroundColor3 = Theme.border, BorderSizePixel = 0}, card); corner(2, track)
-    local fill = new("Frame", {Size = UDim2.new((val - min) / (max - min), 0, 1, 0), BackgroundColor3 = Theme.accent, BorderSizePixel = 0}, track); corner(2, fill)
-    local knob = new("Frame", {Size = UDim2.new(0, 12, 0, 12), Position = UDim2.new((val - min) / (max - min), -6, 0.5, -6), BackgroundColor3 = Theme.white, BorderSizePixel = 0, ZIndex = 3}, track); corner(6, knob)
-    local sliding = false
-    local function update(x)
-        local r = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-        val = math.floor(min + r * (max - min) + 0.5); r = (val - min) / (max - min)
-        fill.Size = UDim2.new(r, 0, 1, 0); knob.Position = UDim2.new(r, -6, 0.5, -6)
-        valLbl.Text = tostring(val)..(suffix or "")
-        task.spawn(function() pcall(callback, val) end)
-    end
-    new("TextButton", {Size = UDim2.new(1, 0, 1, 0), Text = "", BackgroundTransparency = 1, ZIndex = 2}, track).InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then sliding = true; update(inp.Position.X) end
-    end)
-    UserInputService.InputChanged:Connect(function(inp)
-        if sliding and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then update(inp.Position.X) end
-    end)
-    UserInputService.InputEnded:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then sliding = false end
-    end)
-end
-local function addButton(tab, title, desc, callback)
-    local card = addCard(tab, desc and 48 or 40)
-    new("TextLabel", {Text = title, TextSize = 11, Font = Enum.Font.GothamMedium, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(1, -75, 0, desc and 22 or 40), TextXAlignment = Enum.TextXAlignment.Left}, card)
-    if desc then new("TextLabel", {Text = desc, TextSize = 9, Font = Enum.Font.Gotham, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 22), Size = UDim2.new(1, -75, 0, 18), TextXAlignment = Enum.TextXAlignment.Left}, card) end
-    local btn = new("TextButton", {Text = "Run", TextSize = 10, Font = Enum.Font.GothamBold, TextColor3 = Theme.white, BackgroundColor3 = Theme.accentDim, BorderSizePixel = 0, Position = UDim2.new(1, -64, 0.5, -12), Size = UDim2.new(0, 56, 0, 24), AutoButtonColor = false}, card); corner(5, btn)
-    btn.MouseButton1Click:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Theme.green}):Play()
-        task.delay(0.4, function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.accentDim}):Play() end)
-        task.spawn(function() pcall(callback) end)
-    end)
 end
 
------------- Tabs Setup ------------
-local tWelcome = createTab("Welcome", "🏠")
-local tMain    = createTab("Auto Farm", "📈")
+-- Tabs Setup
+local tMain    = createTab("Main", "📈")
 local tPlayerS = createTab("Player", "🏃")
 local tSettings = createTab("Settings", "⚙")
-selectTab(tWelcome)
+selectTab(tMain)
 
--- WELCOME TAB
-do
-    local hero = new("Frame", {Size = UDim2.new(1, 0, 0, 90), BackgroundColor3 = Color3.fromRGB(36, 37, 43), BorderSizePixel = 0}, tWelcome.content)
-    corner(8, hero); stroke(1, Theme.border, hero)
-    new("TextLabel", {Text = "🌌 Ascend Or Fall Hub", TextSize = 16, Font = Enum.Font.GothamBold, TextColor3 = Theme.white, BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 12), Size = UDim2.new(1, -24, 0, 24), TextXAlignment = Enum.TextXAlignment.Left}, hero)
-    new("TextLabel", {Text = "Climb endlessly, gain aura, and scale stats automatically.", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 38), Size = UDim2.new(1, -24, 0, 32), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true}, hero)
-    addDivider(tWelcome)
-    addSection(tWelcome, "Info")
-    addCard(tWelcome, 40)
-    -- Safe info box label
-    local infoCard = tWelcome.content:GetChildren()[#tWelcome.content:GetChildren()]
-    new("TextLabel", {Text = "Touch-enabled UI loaded successfully.", TextSize = 10, Font = Enum.Font.GothamMedium, TextColor3 = Theme.accent, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(1, -16, 1, 0), TextXAlignment = Enum.TextXAlignment.Left}, infoCard)
-end
-
--- AUTO FARM TAB (Ascend Or Fall Specific Automations)
+-- MAIN TAB
 do
     addSection(tMain, "Automation")
-    addToggle(tMain, "Auto Step / Climb", "Simulates continuous climbing steps", false, function(v)
+    addToggle(tMain, "Auto Climb / Step", "Simulates continuous jumping/steps", false, function(v)
         autoClimbEnabled = v
-        notify("Auto Climb", v and "Started climbing!" : "Stopped", v and Theme.green or Theme.textDim)
+        notify("Auto Climb", v and "Started!" or "Stopped", v and Theme.green or Theme.textDim)
     end)
-    addToggle(tMain, "Auto Rebirth", "Automatically triggers rebirths when possible", false, function(v)
+    addToggle(tMain, "Auto Rebirth", "Automatically triggers rebirths", false, function(v)
         autoRebirthEnabled = v
         notify("Auto Rebirth", v and "Enabled" or "Disabled", v and Theme.green or Theme.textDim)
-    end)
-    addDivider(tMain)
-    addButton(tMain, "Claim Free Rewards / Gamepasses", "Triggers prompts if available", function()
-        notify("Rewards", "Attempting to claim available items...", Theme.yellow)
-        -- Game-specific Remote or interaction hooks can be inserted here if identified
     end)
 end
 
 -- PLAYER TAB
 do
-    addSection(tPlayerS, "Movement Modifiers")
-    addToggle(tPlayerS, "Custom WalkSpeed", nil, false, function(v)
-        speedEnabled = v
+    addSection(tPlayerS, "Movement")
+    addToggle(tPlayerS, "Infinite Jump", "Jump anywhere mid-air", false, function(v) infJumpEnabled = v end)
+    addToggle(tPlayerS, "NoClip", "Walk through obstacles", false, function(v) noClipEnabled = v end)
+end
+
+-- SETTINGS TAB
+do
+    addSection(tSettings, "Controls")
+    addToggle(tSettings, "Anti-AFK", "Prevents disconnection", true, function(v) antiAFKEnabled = v end)
+end
+
+-- Loop Routines
+task.spawn(function()
+    while true do
+        task.wait(0.15)
+        if autoClimbEnabled then
+            hudSteps = hudSteps + 1
+            pcall(function()
+                local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+            end)
+        end
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled then
         local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = v and speedValue or 16 end
-    end)
-    addSlider(tPlayerS, "Speed Value", 16, 200, 32, "", function(v)
-        speedValue = v
-        if speedEnabled then
-   
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if noClipEnabled then
+        local char = player.Character
+        if char then
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = false end
+            end
+        end
+    end
+end)
+
+notify("🌌 Ascend Or Fall", "Loaded successfully!", Theme.accent)
