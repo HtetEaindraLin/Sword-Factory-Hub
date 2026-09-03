@@ -1,56 +1,56 @@
--- Advanced Automated Targeting and Building Framework
--- Place this inside a LocalScript in StarterPlayer > StarterPlayerScripts
+-- Mobile UI Script Template
+-- Designed for touchscreens and mobile exploit interfaces
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
--- Configuration Toggles
-local ENABLE_AIMBOT = true
-local ENABLE_AUTO_BLOCK = true
-local AIM_SMOOTHNESS = 0.2
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MobileAutomationGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
 
-local function getNearestTarget()
-    local character = player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-    
-    local rootPart = character.HumanoidRootPart
-    local nearestTarget = nil
-    local shortestDistance = math.huge
-    
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local targetRoot = p.Character.HumanoidRootPart
-            local distance = (rootPart.Position - targetRoot.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                nearestTarget = targetRoot
-            end
-        end
-    end
-    
-    return nearestTarget
-end
+-- Main Floating Toggle Button (Mobile Friendly)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleMenu"
+toggleButton.Size = UDim2.new(0, 50, 0, 50)
+toggleButton.Position = UDim2.new(0, 20, 0.4, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "UI"
+toggleButton.TextSize = 18
+toggleButton.Parent = screenGui
 
-RunService.RenderStepped:Connect(function()
-    local camera = workspace.CurrentCamera
-    
-    -- Target Locking / Aimbot Logic
-    if ENABLE_AIMBOT then
-        local target = getNearestTarget()
-        if target then
-            camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, target.Position), AIM_SMOOTHNESS)
-        end
-    end
-    
-    -- Auto Block Placement Logic
-    if ENABLE_AUTO_BLOCK then
-        pcall(function()
-            local backpack = player:FindFirstChildOfClass("Backpack")
-            local character = player.Character
-            -- Automated tool equipping or placement triggers can be inserted here
-        end)
-    end
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = toggleButton
+
+-- Main Control Panel Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "ControlPanel"
+mainFrame.Size = UDim2.new(0, 280, 0, 320)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 10)
+frameCorner.Parent = mainFrame
+
+-- Title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "Mobile Automation Panel"
+titleLabel.TextSize = 16
+titleLabel.Parent = mainFrame
+
+-- Toggle Visibility on Button Press
+toggleButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
 end)
 
-print("[Framework Active]: Target tracking and automation loops running.")
+print("[Mobile GUI Loaded]: Touch controls ready.")
