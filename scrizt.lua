@@ -1,265 +1,206 @@
 -- ============================================================
---  ASCEND OR FALL HUB — Fixed Mobile UI & Execution
+--  ASCEND OR FALL HUB — Ultra-Clean Roblox Script
 -- ============================================================
 
-local CoreGui          = game:GetService("CoreGui")
-local Players          = game:GetService("Players")
-local RunService       = game:GetService("RunService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService     = game:GetService("TweenService")
-local player           = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local player = Players.LocalPlayer
 
--- Clean up old instances if they exist
+-- Clean up existing GUI
 pcall(function()
-    if CoreGui:FindFirstChild("AOF_Mobile_Hub") then
-        CoreGui.AOF_Mobile_Hub:Destroy()
+    if CoreGui:FindFirstChild("SimpleAOFHub") then
+        CoreGui.SimpleAOFHub:Destroy()
     end
-    if player.PlayerGui:FindFirstChild("AOF_Mobile_Hub") then
-        player.PlayerGui.AOF_Mobile_Hub:Destroy()
+    if player.PlayerGui:FindFirstChild("SimpleAOFHub") then
+        player.PlayerGui.SimpleAOFHub:Destroy()
     end
 end)
 
-local Theme = {
-    bg        = Color3.fromRGB(24, 26, 33),
-    sidebar   = Color3.fromRGB(18, 20, 26),
-    panel     = Color3.fromRGB(30, 33, 42),
-    card      = Color3.fromRGB(38, 42, 54),
-    border    = Color3.fromRGB(50, 56, 72),
-    accent    = Color3.fromRGB(138, 43, 226),
-    accentDim = Color3.fromRGB(90, 25, 150),
-    green     = Color3.fromRGB(87, 242, 135),
-    red       = Color3.fromRGB(237, 66, 69),
-    yellow    = Color3.fromRGB(254, 231, 92),
-    text      = Color3.fromRGB(220, 221, 222),
-    textDim   = Color3.fromRGB(148, 155, 164),
-    textMuted = Color3.fromRGB(96, 100, 108),
-    white     = Color3.fromRGB(255, 255, 255),
-}
+-- Variables
+local autoClimb = false
+local infJump = false
+local noClip = false
 
-local autoClimbEnabled   = false
-local autoRebirthEnabled = false
-local speedEnabled       = false
-local speedValue         = 32
-local jumpEnabled        = false
-local jumpValue          = 50
-local infJumpEnabled     = false
-local noClipEnabled      = false
-local antiAFKEnabled     = true
-local hudEnabled         = true
-local hudSteps           = 0
-local hudSecs            = 0
-
-local AOFGui = Instance.new("ScreenGui")
-AOFGui.Name = "AOF_Mobile_Hub"
-AOFGui.ResetOnSpawn = false
-AOFGui.DisplayOrder = 999999
-AOFGui.IgnoreGuiInset = true
-
-local successParent = pcall(function()
-    AOFGui.Parent = CoreGui
+-- Create ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SimpleAOFHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 999999
+pcall(function()
+    ScreenGui.Parent = CoreGui
 end)
-if not successParent then
-    AOFGui.Parent = player:WaitForChild("PlayerGui")
+if not ScreenGui.Parent then
+    ScreenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
--- Floating Toggle Button (Draggable & Clickable)
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "AOFToggle"
-ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleBtn.Position = UDim2.new(0, 15, 0.4, 0)
-ToggleBtn.BackgroundColor3 = Theme.sidebar
-ToggleBtn.TextColor3 = Theme.accent
-ToggleBtn.Text = "🌌"
-ToggleBtn.TextSize = 24
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.ZIndex = 300
-ToggleBtn.Parent = AOFGui
+-- Floating Toggle Button (To open/close menu)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Size = UDim2.new(0, 45, 0, 45)
+ToggleButton.Position = UDim2.new(0, 20, 0.35, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+ToggleButton.TextColor3 = Color3.fromRGB(138, 43, 226)
+ToggleButton.Text = "🌌"
+ToggleButton.TextSize = 22
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+ToggleButton.Parent = ScreenGui
 
-local tCorner = Instance.new("UICorner", ToggleBtn)
-tCorner.CornerRadius = UDim.new(0, 25)
-local tStroke = Instance.new("UIStroke", ToggleBtn)
-tStroke.Thickness = 2
-tStroke.Color = Theme.accent
+local btnCorner = Instance.new("UICorner", ToggleButton)
+btnCorner.CornerRadius = UDim.new(1, 0)
+local btnStroke = Instance.new("UIStroke", ToggleButton)
+btnStroke.Color = Color3.fromRGB(138, 43, 226)
+btnStroke.Thickness = 2
 
-local function new(cls, props, parent)
-    local i = Instance.new(cls)
-    for k, v in pairs(props or {}) do i[k] = v end
-    if parent then i.Parent = parent end
-    return i
-end
-local function corner(r, p) return new("UICorner", {CornerRadius = UDim.new(0, r)}, p) end
-local function stroke(t, c2, p) return new("UIStroke", {Thickness = t, Color = c2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, p) end
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 320, 0, 240)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -120)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
--- Notification System
-local notifHolder = new("Frame", {Size = UDim2.new(0, 250, 1, 0), Position = UDim2.new(1, -260, 0, 0), BackgroundTransparency = 1, ZIndex = 200}, AOFGui)
-new("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Bottom, HorizontalAlignment = Enum.HorizontalAlignment.Right, Padding = UDim.new(0, 6)}, notifHolder)
-new("UIPadding", {PaddingBottom = UDim.new(0, 12), PaddingRight = UDim.new(0, 8)}, notifHolder)
+local frameCorner = Instance.new("UICorner", MainFrame)
+frameCorner.CornerRadius = UDim.new(0, 8)
+local frameStroke = Instance.new("UIStroke", MainFrame)
+frameStroke.Color = Color3.fromRGB(50, 50, 65)
+frameStroke.Thickness = 1
 
-local _nc = 0
-local function notify(title, body, color)
-    _nc = _nc + 1
-    local nc = new("Frame", {Size = UDim2.new(1, 0, 0, 54), BackgroundColor3 = Theme.card, Position = UDim2.new(1, 10, 0, 0), LayoutOrder = _nc, ZIndex = 201, ClipsDescendants = true}, notifHolder)
-    corner(8, nc); stroke(1, Theme.border, nc)
-    local bar = new("Frame", {Size = UDim2.new(0, 3, 0, 36), Position = UDim2.new(0, 8, 0, 9), BackgroundColor3 = color or Theme.accent, BorderSizePixel = 0, ZIndex = 202}, nc); corner(2, bar)
-    new("TextLabel", {Text = title, TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 18, 0, 6), Size = UDim2.new(1, -24, 0, 16), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 202}, nc)
-    new("TextLabel", {Text = body or "", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 18, 0, 24), Size = UDim2.new(1, -24, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 202}, nc)
-    TweenService:Create(nc, TweenInfo.new(0.25), {Position = UDim2.new(0, 0, 0, 0)}):Play()
-    task.delay(3.5, function()
-        TweenService:Create(nc, TweenInfo.new(0.2), {Position = UDim2.new(1, 10, 0, 0)}):Play()
-        task.wait(0.22); pcall(function() nc:Destroy() end)
-    end)
-end
+-- Title Bar
+local TitleBar = Instance.new("TextLabel")
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+TitleBar.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+TitleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleBar.Text = "  🌌 Ascend Or Fall Hub"
+TitleBar.TextSize = 12
+TitleBar.Font = Enum.Font.GothamBold
+TitleBar.TextXAlignment = Enum.TextXAlignment.Left
+TitleBar.Parent = MainFrame
 
--- Main Window
-local SIDEBAR_W = 120
-local Window = new("Frame", {Name = "Window", Size = UDim2.new(0, 420, 0, 260), Position = UDim2.new(0.5, -210, 0.5, -130), BackgroundColor3 = Theme.bg, BorderSizePixel = 0, ClipsDescendants = true, Active = true, Draggable = true}, AOFGui)
-corner(10, Window); stroke(1, Theme.border, Window)
+local titleCorner = Instance.new("UICorner", TitleBar)
+titleCorner.CornerRadius = UDim.new(0, 8)
 
-local TitleBar = new("Frame", {Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Theme.sidebar, BorderSizePixel = 0, ZIndex = 2}, Window)
-new("TextLabel", {Text = "🌌  ASCEND OR FALL", TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 10, 0, 0), Size = UDim2.new(0, 170, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3}, TitleBar)
+-- Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 35, 0, 35)
+CloseButton.Position = UDim2.new(1, -35, 0, 0)
+CloseButton.BackgroundTransparency = 1
+CloseButton.TextColor3 = Color3.fromRGB(200, 60, 60)
+CloseButton.Text = "X"
+CloseButton.TextSize = 12
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = TitleBar
 
-local function winBtn(icon, xOffset)
-    return new("TextButton", {Text = icon, TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(1, xOffset, 0, 0), Size = UDim2.new(0, 32, 1, 0), ZIndex = 3}, TitleBar)
-end
-local CloseBtn = winBtn("X", -32)
-local MinBtn = winBtn("_", -64)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    pcall(function() AOFGui:Destroy() end)
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
-local hidden = false
-local function toggleUI()
-    hidden = not hidden
-    Window.Visible = not hidden
-end
-MinBtn.MouseButton1Click:Connect(toggleUI)
-ToggleBtn.MouseButton1Click:Connect(toggleUI)
+-- Toggle Menu Visibility
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
 
-local Sidebar = new("Frame", {Size = UDim2.new(0, SIDEBAR_W, 1, -36), Position = UDim2.new(0, 0, 0, 36), BackgroundColor3 = Theme.sidebar, BorderSizePixel = 0}, Window)
-new("Frame", {Size = UDim2.new(0, 1, 1, 0), Position = UDim2.new(1, -1, 0, 0), BackgroundColor3 = Theme.border, BorderSizePixel = 0}, Sidebar)
-local ContentArea = new("Frame", {Size = UDim2.new(1, -SIDEBAR_W, 1, -36), Position = UDim2.new(0, SIDEBAR_W, 0, 36), BackgroundColor3 = Theme.panel, BorderSizePixel = 0}, Window)
+-- Content Container
+local ContentContainer = Instance.new("ScrollingFrame")
+ContentContainer.Size = UDim2.new(1, -16, 1, -45)
+ContentContainer.Position = UDim2.new(0, 8, 0, 40)
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.BorderSizePixel = 0
+ContentContainer.ScrollBarThickness = 2
+ContentContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ContentContainer.Parent = MainFrame
 
-local tabs = {}
-local activeTab = nil
-local SidebarList = new("ScrollingFrame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2, AutomaticCanvasSize = Enum.AutomaticSize.Y}, Sidebar)
-new("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2)}, SidebarList)
-new("UIPadding", {PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), PaddingTop = UDim.new(0, 4)}, SidebarList)
+local UIList = Instance.new("UIListLayout", ContentContainer)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 6)
 
-local function selectTab(tab)
-    for _, t in ipairs(tabs) do
-        t.content.Visible = false; t.bar.Visible = false; t.btn.BackgroundTransparency = 1
-        local l = t.btn:FindFirstChildOfClass("TextLabel"); if l then l.TextColor3 = Theme.textDim end
-    end
-    tab.content.Visible = true; tab.bar.Visible = true; tab.btn.BackgroundTransparency = 0.82
-    local l = tab.btn:FindFirstChildOfClass("TextLabel"); if l then l.TextColor3 = Theme.accent end
-    activeTab = tab
-end
-
-local function createTab(name, icon)
-    local btn = new("TextButton", {Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = Theme.bg, BackgroundTransparency = 1, BorderSizePixel = 0, Text = "", AutoButtonColor = false, LayoutOrder = #tabs + 1}, SidebarList)
-    corner(6, btn)
-    local bar = new("Frame", {Size = UDim2.new(0, 3, 0, 16), Position = UDim2.new(0, 0, 0.5, -8), BackgroundColor3 = Theme.accent, BorderSizePixel = 0, Visible = false}, btn); corner(2, bar)
-    new("TextLabel", {Text = icon.." "..name, TextSize = 11, Font = Enum.Font.GothamMedium, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(1, -8, 1, 0), TextXAlignment = Enum.TextXAlignment.Left}, btn)
-    local content = new("ScrollingFrame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3, ScrollBarImageColor3 = Theme.border, AutomaticCanvasSize = Enum.AutomaticSize.Y, Visible = false}, ContentArea)
-    new("UIPadding", {PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8)}, content)
-    new("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 5)}, content)
-    local tab = {name = name, btn = btn, content = content, bar = bar}
-    tabs[#tabs + 1] = tab
-    btn.MouseButton1Click:Connect(function() selectTab(tab) end)
-    return tab
-end
-
-local function addSection(tab, title)
-    local f = new("Frame", {Size = UDim2.new(1, 0, 0, 16), BackgroundTransparency = 1, LayoutOrder = #tab.content:GetChildren()}, tab.content)
-    new("TextLabel", {Text = title:upper(), TextSize = 8, Font = Enum.Font.GothamBold, TextColor3 = Theme.textMuted, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), TextXAlignment = Enum.TextXAlignment.Left}, f)
-    return f
-end
-local function addCard(tab, h)
-    local c2 = new("Frame", {Size = UDim2.new(1, 0, 0, h or 36), BackgroundColor3 = Theme.card, BorderSizePixel = 0, LayoutOrder = #tab.content:GetChildren()}, tab.content)
-    corner(6, c2); return c2
-end
-local function addDivider(tab)
-    new("Frame", {Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Theme.border, BorderSizePixel = 0, LayoutOrder = #tab.content:GetChildren()}, tab.content)
-end
-local function addToggle(tab, title, desc, default, callback)
-    local card = addCard(tab, desc and 44 = 36)
-    local state = default or false
-    new("TextLabel", {Text = title, TextSize = 10, Font = Enum.Font.GothamMedium, TextColor3 = Theme.text, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(1, -55, 0, desc and 20 = 36), TextXAlignment = Enum.TextXAlignment.Left}, card)
-    if desc then new("TextLabel", {Text = desc, TextSize = 8, Font = Enum.Font.Gotham, TextColor3 = Theme.textDim, BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 20), Size = UDim2.new(1, -55, 0, 16), TextXAlignment = Enum.TextXAlignment.Left}, card) end
-    local track = new("Frame", {Size = UDim2.new(0, 32, 0, 16), Position = UDim2.new(1, -40, 0.5, -8), BackgroundColor3 = state and Theme.green or Theme.border, BorderSizePixel = 0}, card); corner(8, track)
-    local knob = new("Frame", {Size = UDim2.new(0, 12, 0, 12), Position = state and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6), BackgroundColor3 = Theme.white, BorderSizePixel = 0}, track); corner(6, knob)
-    local function setState(v)
-        state = v
-        TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = state and Theme.green or Theme.border}):Play()
-        TweenService:Create(knob, TweenInfo.new(0.15), {Position = state and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6)}):Play()
-        task.spawn(function() pcall(callback, state) end)
-    end
-    new("TextButton", {Size = UDim2.new(1, 0, 1, 0), Text = "", BackgroundTransparency = 1}, card).MouseButton1Click:Connect(function() setState(not state) end)
-end
-
--- Tabs Setup
-local tMain    = createTab("Main", "📈")
-local tPlayerS = createTab("Player", "🏃")
-local tSettings = createTab("Settings", "⚙")
-selectTab(tMain)
-
--- MAIN TAB
-do
-    addSection(tMain, "Automation")
-    addToggle(tMain, "Auto Climb / Step", "Simulates continuous jumping/steps", false, function(v)
-        autoClimbEnabled = v
-        notify("Auto Climb", v and "Started!" or "Stopped", v and Theme.green or Theme.textDim)
-    end)
-    addToggle(tMain, "Auto Rebirth", "Automatically triggers rebirths", false, function(v)
-        autoRebirthEnabled = v
-        notify("Auto Rebirth", v and "Enabled" or "Disabled", v and Theme.green or Theme.textDim)
+-- Helper to create buttons/toggles
+local function createButtonToggle(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 36)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    btn.TextColor3 = Color3.fromRGB(220, 220, 225)
+    btn.Text = "  " .. text .. ": [ OFF ]"
+    btn.TextSize = 11
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = ContentContainer
+    
+    local c = Instance.new("UICorner", btn)
+    c.CornerRadius = UDim.new(0, 6)
+    
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            btn.Text = "  " .. text .. ": [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(87, 242, 135)
+        else
+            btn.Text = "  " .. text .. ": [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(220, 220, 225)
+        end
+        callback(active)
     end)
 end
 
--- PLAYER TAB
-do
-    addSection(tPlayerS, "Movement")
-    addToggle(tPlayerS, "Infinite Jump", "Jump anywhere mid-air", false, function(v) infJumpEnabled = v end)
-    addToggle(tPlayerS, "NoClip", "Walk through obstacles", false, function(v) noClipEnabled = v end)
-end
+-- Add Features
+createButtonToggle("Auto Climb / Jump", function(state)
+    autoClimb = state
+end)
 
--- SETTINGS TAB
-do
-    addSection(tSettings, "Controls")
-    addToggle(tSettings, "Anti-AFK", "Prevents disconnection", true, function(v) antiAFKEnabled = v end)
-end
+createButtonToggle("Infinite Jump", function(state)
+    infJump = state
+end)
 
--- Loop Routines
+createButtonToggle("NoClip", function(state)
+    noClip = state
+end)
+
+-- Logic Loops
 task.spawn(function()
     while true do
-        task.wait(0.15)
-        if autoClimbEnabled then
-            hudSteps = hudSteps + 1
+        task.wait(0.2)
+        if autoClimb then
             pcall(function()
                 local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+                if hum then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
             end)
         end
     end
 end)
 
 UserInputService.JumpRequest:Connect(function()
-    if infJumpEnabled then
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    if infJump then
+        pcall(function()
+            local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
     end
 end)
 
 RunService.Stepped:Connect(function()
-    if noClipEnabled then
-        local char = player.Character
-        if char then
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = false end
+    if noClip then
+        pcall(function()
+            local char = player.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
             end
-        end
+        end)
     end
 end)
 
-notify("🌌 Ascend Or Fall", "Loaded successfully!", Theme.accent)
+print("Ascend Or Fall Hub Loaded Successfully!")
