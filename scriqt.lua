@@ -1,49 +1,78 @@
--- Ascend or Fall Auto-Farm & Auto-Rebirth Script Template
--- Make sure to execute this using a trusted exploit/executor.
+-- Ascend Or Fall - Dedicated Auto Rebirth Script
+-- Focused exclusively on firing the auto-rebirth remote loop for maximum reliability on mobile executors.
 
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
 
-local localPlayer = Players.LocalPlayer
+if player.PlayerGui:FindFirstChild("AscendPureRebirthGui") then
+    player.PlayerGui.AscendPureRebirthGui:Destroy()
+end
 
--- Anti-AFK to prevent disconnection while farming
-localPlayer.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AscendPureRebirthGui"
+ScreenGui.Parent = player.PlayerGui
+ScreenGui.ResetOnSpawn = false
 
--- Configuration Toggles
-getgenv().AutoFarm = false
-getgenv().AutoRebirth = false
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 240, 0, 120)
+MainFrame.Position = UDim2.new(0.5, -120, 0.3, -60)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
--- Simple Rayfield or Orion UI Integration Style (Standard Notification)
-print("[Script Loaded]: Ascend or Fall Auto-Farm initialized.")
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
 
--- Auto-Farm Loop (Simulates upward movement/climbing logic)
-task.spawn(function()
-    while task.wait(0.5) do
-        if getgenv().AutoFarm then
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize, Title.Font = 12, Enum.Font.GothamBold
+Title.Text = "Auto Rebirth Only"
+Title.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = Title
+
+local RebirthBtn = Instance.new("TextButton")
+RebirthBtn.Size = UDim2.new(0.85, 0, 0, 45)
+RebirthBtn.Position = UDim2.new(0.075, 0, 0.40, 0)
+RebirthBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+RebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RebirthBtn.TextSize, RebirthBtn.Font = 13, Enum.Font.GothamBold
+RebirthBtn.Text = "Auto Rebirth: OFF"
+RebirthBtn.Parent = MainFrame
+
+local RCorner = Instance.new("UICorner")
+RCorner.CornerRadius = UDim.new(0, 8)
+RCorner.Parent = RebirthBtn
+
+local autoRebirth = false
+
+RebirthBtn.MouseButton1Click:Connect(function()
+    autoRebirth = not autoRebirth
+    RebirthBtn.BackgroundColor3 = autoRebirth and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(180, 40, 40)
+    RebirthBtn.Text = "Auto Rebirth: " .. (autoRebirth and "ON" or "OFF")
+
+    task.spawn(function()
+        while autoRebirth do
             pcall(function()
-                local character = localPlayer.Character
-                if character and character:FindFirstChild("HumanoidRootPart") then
-                    -- Insert specific position logic or height monitoring here
-                    -- Example: continuously moving upward or triggering interaction prompts
+                for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) and v.Name:lower():find("rebirth") then
+                        if v:IsA("RemoteEvent") then 
+                            v:FireServer() 
+                        else 
+                            v:InvokeServer() 
+                        end
+                    end
                 end
             end)
+            task.wait(0.2)
         end
-    end
-end)
-
--- Auto-Rebirth Loop (Triggers the rebirth remote/function when conditions are met)
-task.spawn(function()
-    while task.wait(3) do
-        if getgenv().AutoRebirth then
-            pcall(function()
-                -- Replace with the game's actual Rebirth RemoteEvent path if known
-                -- e.g., game:GetService("ReplicatedStorage").Remotes.Rebirth:FireServer()
-            end)
-        end
-    end
+    end)
 end)
