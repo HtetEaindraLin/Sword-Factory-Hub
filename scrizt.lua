@@ -1,79 +1,56 @@
--- Services
+-- Advanced Automated Targeting and Building Framework
+-- Place this inside a LocalScript in StarterPlayer > StarterPlayerScripts
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
 
--- Remote Events for client-server communication
-local remotes = ReplicatedStorage:FindFirstChild("BridgeRemotes") or Instance.new("Folder", ReplicatedStorage)
-remotes.Name = "BridgeRemotes"
+-- Configuration Toggles
+local ENABLE_AIMBOT = true
+local ENABLE_AUTO_BLOCK = true
+local AIM_SMOOTHNESS = 0.2
 
-local pickupEvent = remotes:FindFirstChild("PickupBlock") or Instance.new("RemoteEvent", remotes)
-pickupEvent.Name = "PickupBlock"
-
-local placeEvent = remotes:FindFirstChild("PlaceBlock") or Instance.new("RemoteEvent", remotes)
-placeEvent.Name = "PlaceBlock"
-
--- Player inventory tracker (storing block counts per player)
-local playerBlocks = {}
-
-Players.PlayerAdded:Connect(function(player)
-    playerBlocks[player.UserId] = 0
+local function getNearestTarget()
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
     
-    -- Setup leaderstats to show block count
-    local leaderstats = Instance.new("Folder")
-    leaderstats.Name = "leaderstats"
-    leaderstats.Parent = player
+    local rootPart = character.HumanoidRootPart
+    local nearestTarget = nil
+    local shortestDistance = math.huge
     
-    local blocks = Instance.new("IntValue")
-    blocks.Name = "Blocks"
-    blocks.Value = 0
-    blocks.Parent = leaderstats
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    playerBlocks[player.UserId] = nil
-end)
-
--- Handle block collection
-pickupEvent.OnServerEvent:Connect(function(player, blockPart)
-    if blockPart and blockPart:IsA("BasePart") and blockPart.Parent == workspace.BlockSpawners then
-        -- Verify player distance to prevent exploiting
-        local character = player.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local distance = (character.HumanoidRootPart.Position - blockPart.Position).Magnitude
-            if distance < 15 then
-                blockPart:Destroy() -- Remove block from world
-                
-                playerBlocks[player.UserId] = (playerBlocks[player.UserId] or 0) + 1
-                
-                -- Update leaderstats
-                if player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Blocks") then
-                    player.leaderstats.Blocks.Value = playerBlocks[player.UserId]
-                end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = p.Character.HumanoidRootPart
+            local distance = (rootPart.Position - targetRoot.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestTarget = targetRoot
             end
         end
     end
-end)
-
--- Handle bridge building / block placement
-placeEvent.OnServerEvent:Connect(function(player, bridgeSlot)
-    local currentBlocks = playerBlocks[player.UserId] or 0
     
-    if currentBlocks > 0 and bridgeSlot and bridgeSlot:IsA("BasePart") and not bridgeSlot:GetAttribute("Built") then
-        -- Deduct block
-        playerBlocks[player.UserId] = currentBlocks - 1
-        
-        if player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Blocks") then
-            player.leaderstats.Blocks.Value = playerBlocks[player.UserId]
-        end
-        
-        -- Mark bridge slot as built and change appearance to match team color
-        bridgeSlot:SetAttribute("Built", true)
-        bridgeSlot.Transparency = 0
-        bridgeSlot.CanCollide = true
-        
-        -- Assign color based on player team (Assumes Team service is configured)
-        if player.Team then
-            bridgeSlot.BrickColor = player.Team.BrickColor
+    return nearestTarget
+end
+
+RunService.RenderStepped:Connect(function()
+    local camera = workspace.CurrentCamera
+    
+    -- Target Locking / Aimbot Logic
+    if ENABLE_AIMBOT then
+        local target = getNearestTarget()
+        if target then
+            camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, target.Position), AIM_SMOOTHNESS)
         end
     end
+    
+    -- Auto Block Placement Logic
+    if ENABLE_AUTO_BLOCK then
+        pcall(function()
+            local backpack = player:FindFirstChildOfClass("Backpack")
+            local character = player.Character
+            -- Automated tool equipping or placement triggers can be inserted here
+        end)
+    end
 end)
+
+print("[Framework Active]: Target tracking and automation loops running.")
